@@ -1,0 +1,91 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FFF8',
+  },
+  header: {
+    backgroundColor: '#2D6A4F',
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#74C69D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  email: {
+    fontSize: 14,
+    color: '#B7E4C7',
+    marginTop: 4,
+  },
+  content: {
+    padding: 25,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginBottom: 12,
+    marginTop: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  menuItemLast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 14,
+    fontWeight: '500',
+  },
+  logoutButton: {
+    height: 54,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  logoutText: {
+    color: '#DC2626',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
