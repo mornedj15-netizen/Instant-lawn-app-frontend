@@ -1,50 +1,64 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2D6A4F',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: "#2D6A4F",
+        tabBarInactiveTintColor: "#9CA3AF",
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: "#fff",
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: "#E5E7EB",
           height: 60,
           paddingBottom: 8,
+          paddingTop: 8,
+          marginBottom: 48,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
+          fontWeight: "600",
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="home-outline" size={24} color={color} />
+            <MaterialCommunityIcons
+              name="home-outline"
+              size={24}
+              color={color as string}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
-          title: 'My Orders',
+          title: "My Orders",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="clipboard-list-outline" size={24} color={color} />
+            <MaterialCommunityIcons
+              name="clipboard-list-outline"
+              size={24}
+              color={color as string}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: "Profile",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="account-outline" size={24} color={color} />
+            <MaterialCommunityIcons
+              name="account-outline"
+              size={24}
+              color={color as string}
+            />
           ),
         }}
       />
