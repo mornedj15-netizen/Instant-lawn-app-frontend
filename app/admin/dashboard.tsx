@@ -1,54 +1,76 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { orderAPI } from '../services/api';
 import { styles } from './dashboardStyles';
 
-const orders = [
-  {
-    id: '001',
-    customer: 'John Doe',
-    lawnType: 'Kikuyu',
-    area: '50m²',
-    date: '2025-08-01',
-    address: '12 Green Street, Johannesburg',
-    serviceType: 'Delivery',
-    status: 'Pending',
-    statusColor: '#FEF3C7',
-    statusTextColor: '#92400E',
-  },
-  {
-    id: '002',
-    customer: 'Jane Smith',
-    lawnType: 'LM Berea',
-    area: '30m²',
-    date: '2025-08-03',
-    address: '45 Lawn Avenue, Pretoria',
-    serviceType: 'Installation',
-    status: 'Processing',
-    statusColor: '#DBEAFE',
-    statusTextColor: '#1E40AF',
-  },
-  {
-    id: '003',
-    customer: 'Mike Johnson',
-    lawnType: 'Golf Green',
-    area: '75m²',
-    date: '2025-08-05',
-    address: '8 Garden Road, Sandton',
-    serviceType: 'Delivery',
-    status: 'Delivered',
-    statusColor: '#D1FAE5',
-    statusTextColor: '#065F46',
-  },
-];
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  Pending: { bg: '#FEF3C7', text: '#92400E' },
+  Processing: { bg: '#DBEAFE', text: '#1E40AF' },
+  Delivered: { bg: '#D1FAE5', text: '#065F46' },
+  Cancelled: { bg: '#FEE2E2', text: '#DC2626' },
+};
 
-const stats = [
-  { label: 'Total Orders', value: '24', icon: 'clipboard-list-outline' },
-  { label: 'Pending', value: '8', icon: 'clock-outline' },
-  { label: 'Delivered', value: '14', icon: 'check-circle-outline' },
-  { label: 'Cancelled', value: '2', icon: 'close-circle-outline' },
-];
+const NEXT_STEP: Record<string, { status: string; label: string }> = {
+  Pending: { status: 'Processing', label: 'Start Processing' },
+  Processing: { status: 'Delivered', label: 'Mark Delivered' },
+};
 
 export default function AdminDashboard() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadOrders = async () => {
+    try {
+      const response = await orderAPI.getAllOrders();
+      setOrders(response.data);
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Could not load orders'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadOrders();
+    }, [])
+  );
+
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await orderAPI.updateOrderStatus(id, status);
+      await loadOrders();
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Could not update order'
+      );
+    }
+  };
+
+  const count = (status: string) =>
+    orders.filter((o) => o.status === status).length;
+
+  const stats = [
+    { label: 'Total Orders', value: orders.length, icon: 'clipboard-list-outline' },
+    { label: 'Pending', value: count('Pending'), icon: 'clock-outline' },
+    { label: 'Delivered', value: count('Delivered'), icon: 'check-circle-outline' },
+    { label: 'Cancelled', value: count('Cancelled'), icon: 'close-circle-outline' },
+  ];
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
@@ -57,15 +79,10 @@ export default function AdminDashboard() {
       </View>
 
       <View style={styles.content}>
-        {/* Stats */}
         <View style={styles.statsRow}>
           {stats.slice(0, 2).map((stat) => (
             <View key={stat.label} style={styles.statCard}>
-              <MaterialCommunityIcons
-                name={stat.icon as any}
-                size={28}
-                color="#2D6A4F"
-              />
+              <MaterialCommunityIcons name={stat.icon as any} size={28} color="#2D6A4F" />
               <Text style={styles.statNumber}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
@@ -75,99 +92,90 @@ export default function AdminDashboard() {
         <View style={styles.statsRow}>
           {stats.slice(2, 4).map((stat) => (
             <View key={stat.label} style={styles.statCard}>
-              <MaterialCommunityIcons
-                name={stat.icon as any}
-                size={28}
-                color="#2D6A4F"
-              />
+              <MaterialCommunityIcons name={stat.icon as any} size={28} color="#2D6A4F" />
               <Text style={styles.statNumber}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Recent Orders</Text>
+        <Text style={styles.sectionTitle}>All Orders</Text>
 
-        {orders.map((order) => (
-          <View key={order.id} style={styles.orderCard}>
-            <View style={styles.orderHeader}>
-              <Text style={styles.orderTitle}>
-                Order #{order.id} — {order.customer}
-              </Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: order.statusColor },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: order.statusTextColor },
-                  ]}
-                >
-                  {order.status}
-                </Text>
+        {loading ? (
+          <ActivityIndicator size="large" color="#2D6A4F" />
+        ) : orders.length === 0 ? (
+          <Text style={styles.orderDetailText}>No orders yet</Text>
+        ) : (
+          orders.map((order) => {
+            const colors = STATUS_COLORS[order.status] || STATUS_COLORS.Pending;
+            const next = NEXT_STEP[order.status];
+            const canCancel = order.status === 'Pending' || order.status === 'Processing';
+
+            return (
+              <View key={order.id} style={styles.orderCard}>
+                <View style={styles.orderHeader}>
+                  <Text style={styles.orderTitle}>
+                    #{order.id.slice(0, 6)} — {order.customerName}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
+                    <Text style={[styles.statusText, { color: colors.text }]}>
+                      {order.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.orderDetail}>
+                  <MaterialCommunityIcons name="grass" size={14} color="#2D6A4F" />
+                  <Text style={styles.orderDetailText}>
+                    {order.lawnType} — {order.area}m²
+                  </Text>
+                </View>
+
+                <View style={styles.orderDetail}>
+                  <MaterialCommunityIcons name="calendar-outline" size={14} color="#2D6A4F" />
+                  <Text style={styles.orderDetailText}>{order.deliveryDate}</Text>
+                </View>
+
+                <View style={styles.orderDetail}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={14} color="#2D6A4F" />
+                  <Text style={styles.orderDetailText}>{order.address}</Text>
+                </View>
+
+                <View style={styles.orderDetail}>
+                  <MaterialCommunityIcons
+                    name={order.serviceType === 'Delivery' ? 'truck-delivery-outline' : 'shovel'}
+                    size={14}
+                    color="#2D6A4F"
+                  />
+                  <Text style={styles.orderDetailText}>{order.serviceType}</Text>
+                </View>
+
+                {(next || canCancel) && (
+                  <View style={styles.actionRow}>
+                    {next && (
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => updateStatus(order.id, next.status)}
+                      >
+                        <Text style={styles.actionButtonText}>{next.label}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {canCancel && (
+                      <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}
+                        onPress={() => updateStatus(order.id, 'Cancelled')}
+                      >
+                        <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
-            </View>
-
-            <View style={styles.orderDetail}>
-              <MaterialCommunityIcons name="grass" size={14} color="#2D6A4F" />
-              <Text style={styles.orderDetailText}>
-                {order.lawnType} — {order.area}
-              </Text>
-            </View>
-
-            <View style={styles.orderDetail}>
-              <MaterialCommunityIcons
-                name="calendar-outline"
-                size={14}
-                color="#2D6A4F"
-              />
-              <Text style={styles.orderDetailText}>{order.date}</Text>
-            </View>
-
-            <View style={styles.orderDetail}>
-              <MaterialCommunityIcons
-                name="map-marker-outline"
-                size={14}
-                color="#2D6A4F"
-              />
-              <Text style={styles.orderDetailText}>{order.address}</Text>
-            </View>
-
-            <View style={styles.orderDetail}>
-              <MaterialCommunityIcons
-                name={
-                  order.serviceType === 'Delivery'
-                    ? 'truck-delivery-outline'
-                    : 'shovel'
-                }
-                size={14}
-                color="#2D6A4F"
-              />
-              <Text style={styles.orderDetailText}>{order.serviceType}</Text>
-            </View>
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Text style={styles.actionButtonText}>Mark Delivered</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  { backgroundColor: '#FEF2F2', borderColor: '#EF4444' },
-                ]}
-              >
-                <Text
-                  style={[styles.actionButtonText, { color: '#EF4444' }]}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+            );
+          })
+        )}
       </View>
     </ScrollView>
   );

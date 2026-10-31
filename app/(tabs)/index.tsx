@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   Text,
@@ -10,8 +12,9 @@ import {
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { styles } from "./indexStyles";
-import { useRouter } from 'expo-router';
-import { useOrderStore } from '../store/useOrderStore';
+import { useRouter, useFocusEffect } from "expo-router";
+import { useOrderStore } from "../store/useOrderStore";
+import { orderAPI } from "../services/api";
 
 const LAWN_TYPES = ["Kikuyu", "LM Berea", "Golf Green"];
 
@@ -20,14 +23,33 @@ const SERVICE_TYPES = [
   { label: "Installation", icon: "shovel" },
 ];
 
-// Placeholder for fully booked dates — will come from backend later
-const BOOKED_DATES: string[] = ["2025-08-05", "2025-08-12", "2025-08-20"];
-
 export default function HomeScreen() {
   const [lawnType, setLawnType] = useState("Kikuyu");
   const [area, setArea] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const address = useOrderStore((state) => state.selectedAddress);
+  const latitude = useOrderStore((state) => state.selectedLat);
+  const longitude = useOrderStore((state) => state.selectedLon);
+  const clearLocation = useOrderStore((state) => state.clearLocation);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [bookedDates, setBookedDates] = useState<string[]>([]);
+
+  const loadBookedDates = async () => {
+    try {
+      const response = await orderAPI.getBookedDates();
+      setBookedDates(response.data);
+    } catch (error) {
+      console.error("Failed to load booked dates:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBookedDates();
+    }, []),
+  );
+
   const router = useRouter();
   const [showLawnPicker, setShowLawnPicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -38,7 +60,7 @@ export default function HomeScreen() {
   const getMarkedDates = () => {
     const marked: any = {};
 
-    BOOKED_DATES.forEach((date) => {
+    bookedDates.forEach((date) => {
       marked[date] = {
         disabled: true,
         disableTouchEvent: true,
@@ -57,14 +79,40 @@ export default function HomeScreen() {
     return marked;
   };
 
-  const handleOrder = () => {
-    console.log("Order placed:", {
-      lawnType,
-      area,
-      deliveryDate,
-      address,
-      serviceType,
-    });
+  const handleOrder = async () => {
+    if (!area || !deliveryDate || !address) {
+      Alert.alert(
+        "Missing details",
+        "Please fill in the area, date and location.",
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await orderAPI.createOrder({
+        lawnType,
+        area: Number(area),
+        serviceType,
+        deliveryDate,
+        address,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
+      });
+
+      Alert.alert("Success", "Your order has been placed!");
+      setArea("");
+      setDeliveryDate("");
+      clearLocation();
+      loadBookedDates();
+    } catch (error: any) {
+      Alert.alert(
+        "Order failed",
+        error.response?.data?.message || "Something went wrong",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -186,10 +234,20 @@ export default function HomeScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleOrder}>
-            <Text style={styles.buttonText}>
-              {serviceType === "Delivery" ? "Place Order" : "Book Installation"}
-            </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleOrder}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>
+                {serviceType === "Delivery"
+                  ? "Place Order"
+                  : "Book Installation"}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

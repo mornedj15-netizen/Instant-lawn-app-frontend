@@ -2,9 +2,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { styles } from "./profileStyles";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, clearUser } = useAuthStore();
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -12,8 +14,10 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           <MaterialCommunityIcons name="account" size={40} color="#fff" />
         </View>
-        <Text style={styles.name}>John Doe</Text>
-        <Text style={styles.email}>johndoe@email.com</Text>
+        <Text style={styles.name}>
+          {user ? `${user.firstName} ${user.lastName}` : "Guest"}
+        </Text>
+        <Text style={styles.email}>{user?.email}</Text>
       </View>
 
       <View style={styles.content}>
@@ -63,27 +67,30 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Admin</Text>
+        {user?.role === 'admin' && (
+          <>
+            <Text style={styles.sectionTitle}>Admin</Text>
 
-        <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.menuItemLast}
-            onPress={() => router.push("/admin/dashboard" as any)}
-          >
-            <MaterialCommunityIcons
-              name="view-dashboard-outline"
-              size={22}
-              color="#2D6A4F"
-            />
-            <Text style={styles.menuText}>Admin Dashboard</Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={22}
-              color="#9CA3AF"
-            />
-          </TouchableOpacity>
-        </View>
-
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.menuItemLast}
+                onPress={() => router.push("/admin/dashboard" as any)}
+              >
+                <MaterialCommunityIcons
+                  name="view-dashboard-outline"
+                  size={22}
+                  color="#2D6A4F"
+                />
+                <Text style={styles.menuText}>Admin Dashboard</Text>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color="#9CA3AF"
+                />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
         <Text style={styles.sectionTitle}>Support</Text>
 
         <View style={styles.card}>
@@ -118,7 +125,10 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => router.replace("/(auth)/login" as any)}
+          onPress={() => {
+            clearUser();
+            router.replace("/(auth)/login" as any);
+          }}
         >
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>

@@ -1,36 +1,18 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { inventoryAPI } from '../services/api';
 import { styles } from './inventoryStyles';
-
-const inventory = [
-  {
-    id: '1',
-    name: 'Kikuyu',
-    stock: 850,
-    maxStock: 1000,
-    unit: 'm²',
-    pricePerM2: 'R45',
-    lastRestocked: '2025-07-15',
-  },
-  {
-    id: '2',
-    name: 'LM Berea',
-    stock: 320,
-    maxStock: 500,
-    unit: 'm²',
-    pricePerM2: 'R65',
-    lastRestocked: '2025-07-20',
-  },
-  {
-    id: '3',
-    name: 'Golf Green',
-    stock: 80,
-    maxStock: 300,
-    unit: 'm²',
-    pricePerM2: 'R95',
-    lastRestocked: '2025-07-10',
-  },
-];
 
 const getStockStatus = (stock: number, maxStock: number) => {
   const percentage = (stock / maxStock) * 100;
@@ -40,6 +22,56 @@ const getStockStatus = (stock: number, maxStock: number) => {
 };
 
 export default function InventoryScreen() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [mode, setMode] = useState<'add' | 'remove'>('add');
+  const [amount, setAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const loadInventory = async () => {
+    try {
+      const response = await inventoryAPI.getInventory();
+      setItems(response.data);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Could not load inventory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadInventory();
+    }, [])
+  );
+
+  const openModal = (item: any, newMode: 'add' | 'remove') => {
+    setSelected(item);
+    setMode(newMode);
+    setAmount('');
+  };
+
+  const handleSave = async () => {
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value <= 0) {
+      Alert.alert('Invalid amount', 'Enter a number greater than 0.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await inventoryAPI.updateStock(selected.id, mode === 'add' ? value : -value);
+      setSelected(null);
+      await loadInventory();
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Could not update stock');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
@@ -48,88 +80,122 @@ export default function InventoryScreen() {
       </View>
 
       <View style={styles.content}>
-        <TouchableOpacity style={styles.addButton}>
-          <MaterialCommunityIcons name="plus" size={22} color="#fff" />
-          <Text style={styles.addButtonText}>Add Stock</Text>
-        </TouchableOpacity>
-
         <Text style={styles.sectionTitle}>Current Stock</Text>
 
-        {inventory.map((item) => {
-          const status = getStockStatus(item.stock, item.maxStock);
-          const percentage = (item.stock / item.maxStock) * 100;
+        {loading ? (
+          <ActivityIndicator size="large" color="#2D6A4F" />
+        ) : (
+          items.map((item) => {
+            const status = getStockStatus(item.stock, item.maxStock);
+            const percentage = (item.stock / item.maxStock) * 100;
 
-          return (
-            <View key={item.id} style={styles.inventoryCard}>
-              <View style={styles.inventoryHeader}>
-                <Text style={styles.inventoryName}>{item.name}</Text>
-                <View style={[styles.stockBadge, { backgroundColor: status.color }]}>
-                  <Text style={[styles.stockText, { color: status.textColor }]}>
-                    {status.label}
+            return (
+              <View key={item.id} style={styles.inventoryCard}>
+                <View style={styles.inventoryHeader}>
+                  <Text style={styles.inventoryName}>{item.name}</Text>
+                  <View style={[styles.stockBadge, { backgroundColor: status.color }]}>
+                    <Text style={[styles.stockText, { color: status.textColor }]}>
+                      {status.label}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.inventoryDetail}>
+                  <MaterialCommunityIcons name="grass" size={16} color="#2D6A4F" />
+                  <Text style={styles.inventoryDetailText}>{item.stock} m² available</Text>
+                </View>
+
+                <View style={styles.inventoryDetail}>
+                  <MaterialCommunityIcons name="currency-usd" size={16} color="#2D6A4F" />
+                  <Text style={styles.inventoryDetailText}>R{item.pricePerM2} per m²</Text>
+                </View>
+
+                <View style={styles.inventoryDetail}>
+                  <MaterialCommunityIcons name="calendar-outline" size={16} color="#2D6A4F" />
+                  <Text style={styles.inventoryDetailText}>
+                    Last restocked: {item.lastRestocked}
                   </Text>
                 </View>
-              </View>
 
-              <View style={styles.inventoryDetail}>
-                <MaterialCommunityIcons name="grass" size={16} color="#2D6A4F" />
-                <Text style={styles.inventoryDetailText}>
-                  {item.stock} {item.unit} available
-                </Text>
-              </View>
+                <View style={styles.progressBarContainer}>
+                  <View
+                    style={[
+                      styles.progressBar,
+                      { width: `${percentage}%` as any, backgroundColor: status.barColor },
+                    ]}
+                  />
+                </View>
 
-              <View style={styles.inventoryDetail}>
-                <MaterialCommunityIcons name="currency-usd" size={16} color="#2D6A4F" />
-                <Text style={styles.inventoryDetailText}>
-                  {item.pricePerM2} per m²
-                </Text>
-              </View>
-
-              <View style={styles.inventoryDetail}>
-                <MaterialCommunityIcons name="calendar-outline" size={16} color="#2D6A4F" />
-                <Text style={styles.inventoryDetailText}>
-                  Last restocked: {item.lastRestocked}
-                </Text>
-              </View>
-
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${percentage}%` as any,
-                      backgroundColor: status.barColor,
-                    },
-                  ]}
-                />
-              </View>
-
-              <View style={styles.progressLabel}>
-                <Text style={styles.progressLabelText}>0</Text>
-                <Text style={styles.progressLabelText}>
-                  {item.stock}/{item.maxStock} {item.unit}
-                </Text>
-                <Text style={styles.progressLabelText}>{item.maxStock}</Text>
-              </View>
-
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={styles.actionButtonText}>Add Stock</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: '#FEF2F2', borderColor: '#EF4444' },
-                  ]}
-                >
-                  <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>
-                    Remove Stock
+                <View style={styles.progressLabel}>
+                  <Text style={styles.progressLabelText}>0</Text>
+                  <Text style={styles.progressLabelText}>
+                    {item.stock}/{item.maxStock} m²
                   </Text>
-                </TouchableOpacity>
+                  <Text style={styles.progressLabelText}>{item.maxStock}</Text>
+                </View>
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => openModal(item, 'add')}
+                  >
+                    <Text style={styles.actionButtonText}>Add Stock</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}
+                    onPress={() => openModal(item, 'remove')}
+                  >
+                    <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>
+                      Remove Stock
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
       </View>
+
+      <Modal
+        visible={selected !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelected(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              {mode === 'add' ? 'Add' : 'Remove'} {selected?.name} Stock
+            </Text>
+            <Text style={styles.modalSubtitle}>Enter the amount in m²</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 100"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setSelected(null)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

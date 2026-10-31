@@ -2,13 +2,38 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { authAPI } from '../services/api';
+import { useAuthStore } from '../store/useAuthStore';
 import { styles } from './loginStyles';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { setUser, setLoading, isLoading } = useAuthStore();
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await authAPI.login({ email, password });
+      const { token, ...user } = response.data;
+      setUser(user, token);
+      router.push('/(tabs)/' as any);
+    } catch (error: any) {
+      Alert.alert(
+        'Login Failed',
+        error.response?.data?.message || 'Something went wrong'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <LinearGradient
@@ -34,6 +59,7 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
         </View>
 
@@ -50,9 +76,14 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.push('/(tabs)/' as any)}
+          onPress={handleLogin}
+          disabled={isLoading}
         >
-          <Text style={styles.buttonText}>Login</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity>

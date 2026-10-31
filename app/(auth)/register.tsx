@@ -2,7 +2,18 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Image, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { authAPI } from '../services/api';
+import { useAuthStore } from '../store/useAuthStore';
 import { styles } from './registerStyles';
 
 export default function RegisterScreen() {
@@ -13,6 +24,45 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const { setUser, setLoading, isLoading } = useAuthStore();
+
+  const handleRegister = async () => {
+    if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await authAPI.register({
+        firstName,
+        lastName,
+        email,
+        phone,
+        password,
+      });
+      const { token, ...user } = response.data;
+      setUser(user, token);
+      router.push('/(tabs)/' as any);
+    } catch (error: any) {
+      Alert.alert(
+        'Registration Failed',
+        error.response?.data?.message || 'Something went wrong'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <LinearGradient
@@ -59,6 +109,7 @@ export default function RegisterScreen() {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
           </View>
 
@@ -97,9 +148,14 @@ export default function RegisterScreen() {
 
           <TouchableOpacity
             style={styles.button}
-            onPress={() => router.push('/(tabs)/' as any)}
+            onPress={handleRegister}
+            disabled={isLoading}
           >
-            <Text style={styles.buttonText}>Register</Text>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Register</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push('/(auth)/login' as any)}>
