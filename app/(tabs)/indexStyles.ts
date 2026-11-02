@@ -204,4 +204,34 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
   },
+    estimateBox: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#B7E4C7',
+  },
+  estimateTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2D6A4F',
+    marginBottom: 8,
+  },
+  estimateText: {
+    fontSize: 13,
+    color: '#374151',
+    marginBottom: 3,
+  },
+  estimateTotal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 4,
+  },
+  estimateWarning: {
+    fontSize: 12,
+    color: '#B45309',
+    marginTop: 6,
+  },
 });

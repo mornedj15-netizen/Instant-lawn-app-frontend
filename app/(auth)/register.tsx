@@ -1,7 +1,7 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,34 +11,55 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { authAPI } from '../services/api';
-import { useAuthStore } from '../store/useAuthStore';
-import { styles } from './registerStyles';
+} from "react-native";
+import { authAPI } from "../services/api";
+import { useAuthStore } from "../store/useAuthStore";
+import { styles } from "./registerStyles";
+import { isValidEmail, isValidPhone } from "../services/validation";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const { setUser, setLoading, isLoading } = useAuthStore();
 
   const handleRegister = async () => {
-    if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      !password ||
+      !confirmPassword
+    ) {
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    if (!isValidEmail(email)) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
+
+    if (!isValidPhone(phone)) {
+      Alert.alert(
+        "Error",
+        "Please enter a valid South African phone number, for example 0821234567",
+      );
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert("Error", "Password must be at least 6 characters");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
@@ -53,11 +74,11 @@ export default function RegisterScreen() {
       });
       const { token, ...user } = response.data;
       setUser(user, token);
-      router.push('/(tabs)/' as any);
+      router.push("/(tabs)/" as any);
     } catch (error: any) {
       Alert.alert(
-        'Registration Failed',
-        error.response?.data?.message || 'Something went wrong'
+        "Registration Failed",
+        error.response?.data?.message || "Something went wrong",
       );
     } finally {
       setLoading(false);
@@ -66,14 +87,11 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient
-      colors={['#F8FFF8', '#E8F5E9', '#D8F3DC']}
+      colors={["#F8FFF8", "#E8F5E9", "#D8F3DC"]}
       style={styles.container}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Image
-          source={require('../../assets/logo.jpg')}
-          style={styles.logo}
-        />
+        <Image source={require("../../assets/logo.jpg")} style={styles.logo} />
 
         <Text style={styles.title}>SESMYL</Text>
         <Text style={styles.subtitle}>Instant Lawn Solutions</Text>
@@ -82,7 +100,11 @@ export default function RegisterScreen() {
           <Text style={styles.welcome}>Create Account</Text>
 
           <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="account-outline" size={22} color="#2D6A4F" />
+            <MaterialCommunityIcons
+              name="account-outline"
+              size={22}
+              color="#2D6A4F"
+            />
             <TextInput
               placeholder="First Name"
               style={styles.input}
@@ -92,7 +114,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="account-outline" size={22} color="#2D6A4F" />
+            <MaterialCommunityIcons
+              name="account-outline"
+              size={22}
+              color="#2D6A4F"
+            />
             <TextInput
               placeholder="Last Name"
               style={styles.input}
@@ -102,7 +128,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="email-outline" size={22} color="#2D6A4F" />
+            <MaterialCommunityIcons
+              name="email-outline"
+              size={22}
+              color="#2D6A4F"
+            />
             <TextInput
               placeholder="Email Address"
               style={styles.input}
@@ -114,7 +144,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="phone-outline" size={22} color="#2D6A4F" />
+            <MaterialCommunityIcons
+              name="phone-outline"
+              size={22}
+              color="#2D6A4F"
+            />
             <TextInput
               placeholder="Phone Number"
               style={styles.input}
@@ -125,7 +159,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="lock-outline" size={22} color="#2D6A4F" />
+            <MaterialCommunityIcons
+              name="lock-outline"
+              size={22}
+              color="#2D6A4F"
+            />
             <TextInput
               placeholder="Password"
               style={styles.input}
@@ -136,7 +174,11 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <MaterialCommunityIcons name="lock-check-outline" size={22} color="#2D6A4F" />
+            <MaterialCommunityIcons
+              name="lock-check-outline"
+              size={22}
+              color="#2D6A4F"
+            />
             <TextInput
               placeholder="Confirm Password"
               style={styles.input}
@@ -158,10 +200,10 @@ export default function RegisterScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/(auth)/login' as any)}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login" as any)}>
             <Text style={styles.login}>
-              {'Already have an account? '}
-              <Text style={{ fontWeight: '700' }}>Login</Text>
+              {"Already have an account? "}
+              <Text style={{ fontWeight: "700" }}>Login</Text>
             </Text>
           </TouchableOpacity>
         </View>

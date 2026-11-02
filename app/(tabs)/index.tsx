@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import { styles } from "./indexStyles";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useOrderStore } from "../store/useOrderStore";
 import { orderAPI } from "../services/api";
+import { useAuthStore } from "../store/useAuthStore";
 
 const LAWN_TYPES = ["Kikuyu", "LM Berea", "Golf Green"];
 
@@ -23,39 +24,95 @@ const SERVICE_TYPES = [
   { label: "Installation", icon: "shovel" },
 ];
 
+const DAY_CAPACITY_MIN = 480;
+
+const formatMinutes = (minutes: number) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m}min` : `${m}min`;
+};
+
 export default function HomeScreen() {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+
+  // 1. All state first
   const [lawnType, setLawnType] = useState("Kikuyu");
   const [area, setArea] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [serviceType, setServiceType] = useState("Delivery");
+  const [showLawnPicker, setShowLawnPicker] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [bookedDates, setBookedDates] = useState<string[]>([]);
+  const [estimate, setEstimate] = useState<any | null>(null);
+  const [estimating, setEstimating] = useState(false);
+
   const address = useOrderStore((state) => state.selectedAddress);
   const latitude = useOrderStore((state) => state.selectedLat);
   const longitude = useOrderStore((state) => state.selectedLon);
   const clearLocation = useOrderStore((state) => state.clearLocation);
-  const [submitting, setSubmitting] = useState(false);
 
-  const [bookedDates, setBookedDates] = useState<string[]>([]);
+  const today = new Date().toISOString().split("T")[0];
 
-  const loadBookedDates = async () => {
+  // 2. Then functions
+  const loadBookedDates = async (minutes?: number) => {
     try {
-      const response = await orderAPI.getBookedDates();
+      const response = await orderAPI.getBookedDates(minutes);
       setBookedDates(response.data);
     } catch (error) {
       console.error("Failed to load booked dates:", error);
     }
   };
 
+  // 3. Then effects
+  // Reload the unavailable dates when the screen opens or the job time changes
   useFocusEffect(
     useCallback(() => {
-      loadBookedDates();
-    }, []),
+      loadBookedDates(estimate?.totalMinutes);
+    }, [estimate]),
   );
 
-  const router = useRouter();
-  const [showLawnPicker, setShowLawnPicker] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [serviceType, setServiceType] = useState("Delivery");
+  // Work out the job time once a location and area are chosen
+  useEffect(() => {
+    const areaNum = Number(area);
+    if (latitude === null || longitude === null || !areaNum || areaNum <= 0) {
+      setEstimate(null);
+      setEstimating(false);
+      return;
+    }
 
-  const today = new Date().toISOString().split("T")[0];
+    setEstimating(true);
+    const timer = setTimeout(async () => {
+      try {
+        const response = await orderAPI.getEstimate({
+          latitude,
+          longitude,
+          area: areaNum,
+          serviceType,
+        });
+        setEstimate(response.data);
+      } catch (error) {
+        console.error("Failed to get estimate:", error);
+        setEstimate(null);
+      } finally {
+        setEstimating(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [area, latitude, longitude, serviceType]);
+
+  // Clear the chosen date if it stops being available
+  useEffect(() => {
+    if (deliveryDate && bookedDates.includes(deliveryDate)) {
+      setDeliveryDate("");
+      Alert.alert(
+        "Date unavailable",
+        "That date no longer has enough time for this order. Please pick another.",
+      );
+    }
+  }, [bookedDates]);
 
   const getMarkedDates = () => {
     const marked: any = {};
@@ -100,7 +157,12 @@ export default function HomeScreen() {
         longitude: longitude ?? undefined,
       });
 
-      Alert.alert("Success", "Your order has been placed!");
+      Alert.alert("Success", "Your order has been placed!", [
+        {
+          text: "View my orders",
+          onPress: () => router.push("/(tabs)/orders" as any),
+        },
+      ]);
       setArea("");
       setDeliveryDate("");
       clearLocation();
@@ -118,7 +180,9 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Good day 👋</Text>
+        <Text
+          style={styles.greeting}
+        >{`Good day${user ? `, ${user.firstName}` : ""} 👋`}</Text>
         <Text style={styles.headerTitle}>Place an Order</Text>
       </View>
 
@@ -233,6 +297,43 @@ export default function HomeScreen() {
               color="#9CA3AF"
             />
           </TouchableOpacity>
+
+          {(estimating || estimate) && (
+            <View style={styles.estimateBox}>
+              {estimating || !estimate ? (
+                <ActivityIndicator color="#2D6A4F" />
+              ) : (
+                <>
+                  <Text style={styles.estimateTitle}>Estimated job time</Text>
+                  <Text style={styles.estimateText}>
+                    Distance:{" "}
+                    {estimate.distanceKm !== null
+                      ? `${estimate.distanceKm} km`
+                      : "unavailable"}
+                  </Text>
+                  <Text style={styles.estimateText}>
+                    Travel (round trip): {formatMinutes(estimate.travelMinutes)}
+                  </Text>
+                  <Text style={styles.estimateText}>
+                    On site: {formatMinutes(estimate.workMinutes)}
+                  </Text>
+                  <Text style={styles.estimateTotal}>
+                    Total: {formatMinutes(estimate.totalMinutes)}
+                  </Text>
+                  {!estimate.travelFromRouting && (
+                    <Text style={styles.estimateWarning}>
+                      Travel time is approximate right now.
+                    </Text>
+                  )}
+                  {estimate.totalMinutes > DAY_CAPACITY_MIN && (
+                    <Text style={styles.estimateWarning}>
+                      This job is too large for one day. Please contact SESMYL.
+                    </Text>
+                  )}
+                </>
+              )}
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.button}

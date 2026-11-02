@@ -132,7 +132,7 @@ export default function MapPickerScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Select Location</Text>
         <Text style={styles.headerSubtitle}>
-          Search or tap on the map to select
+          Search the street, then tap your exact spot on the map
         </Text>
       </View>
 

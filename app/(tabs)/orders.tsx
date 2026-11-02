@@ -1,40 +1,88 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { orderAPI } from '../services/api';
-import { styles } from './ordersStyles';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+} from "react-native";
+import { orderAPI } from "../services/api";
+import { styles } from "./ordersStyles";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  Pending: { bg: '#FEF3C7', text: '#92400E' },
-  Processing: { bg: '#DBEAFE', text: '#1E40AF' },
-  Delivered: { bg: '#D1FAE5', text: '#065F46' },
-  Cancelled: { bg: '#FEE2E2', text: '#DC2626' },
+  Pending: { bg: "#FEF3C7", text: "#92400E" },
+  Processing: { bg: "#DBEAFE", text: "#1E40AF" },
+  Delivered: { bg: "#D1FAE5", text: "#065F46" },
+  Cancelled: { bg: "#FEE2E2", text: "#DC2626" },
 };
 
 export default function OrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const loadOrders = async () => {
+    try {
+      const response = await orderAPI.getMyOrders();
+      setOrders(response.data);
+    } catch (error) {
+      console.error("Failed to load orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadOrders();
+    setRefreshing(false);
+  };
+
   useFocusEffect(
     useCallback(() => {
-      const loadOrders = async () => {
-        setLoading(true);
-        try {
-          const response = await orderAPI.getMyOrders();
-          setOrders(response.data);
-        } catch (error) {
-          console.error('Failed to load orders:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
+      setLoading(true);
       loadOrders();
-    }, [])
+    }, []),
   );
 
+  const confirmCancel = (id: string) => {
+    Alert.alert("Cancel order", "Are you sure you want to cancel this order?", [
+      { text: "Keep order", style: "cancel" },
+      {
+        text: "Cancel order",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await orderAPI.cancelOrder(id);
+            await loadOrders();
+          } catch (error: any) {
+            Alert.alert(
+              "Error",
+              error.response?.data?.message || "Could not cancel order",
+            );
+          }
+        },
+      },
+    ]);
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#2D6A4F"]}
+        />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Orders</Text>
         <Text style={styles.headerSubtitle}>{orders.length} orders found</Text>
@@ -47,7 +95,11 @@ export default function OrdersScreen() {
           <ActivityIndicator size="large" color="#2D6A4F" />
         ) : orders.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="clipboard-text-outline" size={60} color="#D1D5DB" />
+            <MaterialCommunityIcons
+              name="clipboard-text-outline"
+              size={60}
+              color="#D1D5DB"
+            />
             <Text style={styles.emptyText}>You have no orders yet</Text>
           </View>
         ) : (
@@ -56,8 +108,12 @@ export default function OrdersScreen() {
             return (
               <View key={order.id} style={styles.card}>
                 <View style={styles.orderHeader}>
-                  <Text style={styles.orderTitle}>Order #{order.id.slice(0, 6)}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: colors.bg }]}>
+                  <Text style={styles.orderTitle}>
+                    Order #{order.id.slice(0, 6)}
+                  </Text>
+                  <View
+                    style={[styles.statusBadge, { backgroundColor: colors.bg }]}
+                  >
                     <Text style={[styles.statusText, { color: colors.text }]}>
                       {order.status}
                     </Text>
@@ -65,21 +121,44 @@ export default function OrdersScreen() {
                 </View>
 
                 <View style={styles.orderDetail}>
-                  <MaterialCommunityIcons name="grass" size={16} color="#2D6A4F" />
+                  <MaterialCommunityIcons
+                    name="grass"
+                    size={16}
+                    color="#2D6A4F"
+                  />
                   <Text style={styles.orderDetailText}>
                     {order.lawnType} — {order.area}m²
                   </Text>
                 </View>
 
                 <View style={styles.orderDetail}>
-                  <MaterialCommunityIcons name="calendar-outline" size={16} color="#2D6A4F" />
-                  <Text style={styles.orderDetailText}>{order.deliveryDate}</Text>
+                  <MaterialCommunityIcons
+                    name="calendar-outline"
+                    size={16}
+                    color="#2D6A4F"
+                  />
+                  <Text style={styles.orderDetailText}>
+                    {order.deliveryDate}
+                  </Text>
                 </View>
 
                 <View style={styles.orderDetail}>
-                  <MaterialCommunityIcons name="map-marker-outline" size={16} color="#2D6A4F" />
+                  <MaterialCommunityIcons
+                    name="map-marker-outline"
+                    size={16}
+                    color="#2D6A4F"
+                  />
                   <Text style={styles.orderDetailText}>{order.address}</Text>
                 </View>
+
+                {order.status === "Pending" && (
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => confirmCancel(order.id)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel Order</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           })

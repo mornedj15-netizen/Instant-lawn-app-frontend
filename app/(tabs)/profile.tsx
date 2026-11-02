@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View, Alert } from "react-native";
 import { styles } from "./profileStyles";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -24,7 +24,12 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Account</Text>
 
         <View style={styles.card}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() =>
+              Alert.alert("Coming soon", "This feature is not available yet.")
+            }
+          >
             <MaterialCommunityIcons
               name="account-edit-outline"
               size={22}
@@ -38,7 +43,12 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() =>
+              Alert.alert("Coming soon", "This feature is not available yet.")
+            }
+          >
             <MaterialCommunityIcons
               name="bell-outline"
               size={22}
@@ -52,7 +62,12 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItemLast}>
+          <TouchableOpacity
+            style={styles.menuItemLast}
+            onPress={() =>
+              Alert.alert("Coming soon", "This feature is not available yet.")
+            }
+          >
             <MaterialCommunityIcons
               name="map-marker-outline"
               size={22}
@@ -67,7 +82,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {user?.role === 'admin' && (
+        {user?.role === "admin" && (
           <>
             <Text style={styles.sectionTitle}>Admin</Text>
 
@@ -94,7 +109,12 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Support</Text>
 
         <View style={styles.card}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() =>
+              Alert.alert("Coming soon", "This feature is not available yet.")
+            }
+          >
             <MaterialCommunityIcons
               name="help-circle-outline"
               size={22}
@@ -108,7 +128,12 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItemLast}>
+          <TouchableOpacity
+            style={styles.menuItemLast}
+            onPress={() =>
+              Alert.alert("Coming soon", "This feature is not available yet.")
+            }
+          >
             <MaterialCommunityIcons
               name="phone-outline"
               size={22}

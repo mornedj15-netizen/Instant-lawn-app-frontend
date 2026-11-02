@@ -1,9 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Tabs, Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((state) => state.user);
+
+  if (!user) return <Redirect href="/(auth)/login" />;
 
   return (
     <Tabs
